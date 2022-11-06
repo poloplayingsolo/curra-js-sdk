@@ -1,3 +1,3 @@
 export enum Blockchain {
-  ETHEREUM = "eth",
+  GOERLI = "eth",
 }

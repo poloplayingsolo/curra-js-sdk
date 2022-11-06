@@ -1,11 +1,10 @@
 {
   "name": "@curra/sdk",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "main": "dist/index.js",
   "private": false,
   "scripts": {
-    "build": "rollup --bundleConfigAsCjs -c",
-    "publish": "npm publish --access=public"
+    "build": "rollup --bundleConfigAsCjs -c"
   },
   "repository": {
     "type": "git",

@@ -42,6 +42,18 @@ export class Coordinator {
     return body.address;
   }
 
+  async getAddress(salt: number) {
+    const parent = await this.wallet.getAddress();
+    const signature = await this.getSignature(parent);
+    const body = await this.#request(
+      "post",
+      "forwarders",
+      { parent, salt },
+      { signature }
+    );
+    return body.address;
+  }
+
   async getNonce(address: string): Promise<number> {
     const response = await this.#request(
       "get",

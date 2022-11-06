@@ -40,6 +40,11 @@ export class Curra {
     await this.connector?.importAddress(address);
     return address;
   }
+  async getAddress(salt: number) {
+    const address = await this.coordinator.getAddress(salt);
+    await this.connector?.importAddress(address);
+    return address;
+  }
 
   async syncTokens(): Promise<void> {
     if (!this.connector)
