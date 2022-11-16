@@ -4,6 +4,7 @@ import { Blockchain } from "./Blockchain";
 import { Connector } from "./Connector";
 import { Coordinator } from "./Coordinator";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export class Curra {
   private readonly connector?: Connector;
   private readonly coordinator: Coordinator;
@@ -61,7 +62,8 @@ export class Curra {
       tokens.entities.push(...more.entities);
     }
     for (const t of tokens.entities) {
-      this.connector.importToken(t.token);
+      if (t.token === ZERO_ADDRESS) continue;
+      await this.connector.importToken(t.token);
     }
   }
 
@@ -80,7 +82,7 @@ export class Curra {
       tokens.entities.push(...more.entities);
     }
     for (const t of tokens.entities) {
-      this.connector.importAddress(t.address);
+      await this.connector.importAddress(t.address);
     }
   }
 
