@@ -3,6 +3,7 @@ import { Wallet } from "ethers";
 import { Blockchain } from "./Blockchain";
 import { Connector } from "./Connector";
 import { Coordinator } from "./Coordinator";
+import { Transfer } from "./types";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export class Curra {
@@ -88,6 +89,20 @@ export class Curra {
 
   async sync(): Promise<void> {
     await Promise.all([this.syncAddresses(), this.syncTokens()]);
+  }
+
+  private getConnectorOrAbort(): Connector {
+    if (!this.connector)
+      throw new Error("method is avaiable only with connector");
+    return this.connector;
+  }
+
+  isIncomingTransfer(t: Transfer): boolean {
+    return this.getConnectorOrAbort().isIncomingTransfer(t);
+  }
+
+  isNonZeroTransfer(t: Transfer): boolean {
+    return this.getConnectorOrAbort().isNonZeroTransfer(t);
   }
 }
 

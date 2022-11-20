@@ -1,4 +1,5 @@
 import needle, { BodyData, NeedleHttpVerbs } from "needle";
+import { Transfer } from "./types";
 
 export class Connector {
   constructor(private readonly url: string) {}
@@ -18,5 +19,13 @@ export class Connector {
 
   async importToken(address: string) {
     await this.#request("post", `tokens`, { address });
+  }
+
+  isIncomingTransfer(t: Transfer): boolean {
+    return t.toAddress.owned;
+  }
+
+  isNonZeroTransfer(t: Transfer): boolean {
+    return parseInt(t.value) > 0;
   }
 }
