@@ -1,82 +1,128 @@
-import { Wallet } from "ethers";
+import { BigNumber, Wallet } from "ethers";
 
 import { Blockchain } from "./Blockchain";
-import { Connector } from "./Connector";
-import { Coordinator } from "./Coordinator";
+import { CurraConnector } from "./CurraConnector";
+import { CurraCoordinator } from "./CurraCoordinator";
+import { Subraph } from "./Subgraph";
 import { Transfer } from "./types";
 
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export class Curra {
-  private readonly connector?: Connector;
-  private readonly coordinator: Coordinator;
+  private readonly connector?: CurraConnector;
+  private readonly ownershipId?: BigNumber;
+  private readonly destination?: string;
+  private readonly coordinator: CurraCoordinator;
+  private readonly subgraph: Subraph;
   private readonly wallet: Wallet;
 
   constructor(
     public readonly blockchain: Blockchain,
     options: {
       privateKey: string;
+      destination?: string;
+      ownershipId?: string;
       connectorUrl?: string;
-      coordinatorUrl: string;
+      coordinatorUrl?: string;
+      subgraphUrl?: string;
     }
   ) {
     if (options?.connectorUrl) {
-      this.connector = new Connector(options.connectorUrl);
+      this.connector = new CurraConnector(options.connectorUrl);
     }
+    this.destination = options.destination;
+    this.ownershipId = options.ownershipId
+      ? BigNumber.from(options.ownershipId)
+      : undefined;
     this.wallet = new Wallet(options?.privateKey);
-    this.coordinator = new Coordinator(
+    this.coordinator = new CurraCoordinator(
       options.coordinatorUrl ?? `https://${blockchain}.coordinator.curra.io`,
       this.wallet
     );
+    this.subgraph = new Subraph(
+      options.subgraphUrl ??
+        `https://thegraph.${blockchain}.network.curra.io/subgraphs/name/curra`
+    );
   }
 
-  getConnector(): Connector | undefined {
+  getOwnershipId(ownershipId?: string): BigNumber {
+    const value = ownershipId ? BigNumber.from(ownershipId) : this.ownershipId;
+    if (!value)
+      throw new Error(
+        "Ownership id should be provided in Curra class ctor or in method argument"
+      );
+
+    return value;
+  }
+
+  getDestionation(destination?: string): string {
+    const value = this.destination ?? destination;
+    if (!value)
+      throw new Error(
+        "Destination address should be provided in Curra class ctor or in method argument"
+      );
+    return value;
+  }
+
+  getConnector(): CurraConnector | undefined {
     return this.connector;
   }
 
-  getCoordinator(): Coordinator | undefined {
+  getCoordinator(): CurraCoordinator | undefined {
     return this.coordinator;
   }
 
-  async getNextAddress() {
-    const address = await this.coordinator.getNextAddress();
-    await this.connector?.importAddress(address);
-    return address;
-  }
-  async getAddress(salt: number) {
-    const address = await this.coordinator.getAddress(salt);
+  async getNextAddress({
+    ownershipId,
+    destination,
+  }: { ownershipId?: string; destination?: string } = {}) {
+    const address = await this.coordinator.getNextAddress(
+      this.getOwnershipId(ownershipId),
+      this.getDestionation(destination)
+    );
     await this.connector?.importAddress(address);
     return address;
   }
 
-  async syncTokens(): Promise<void> {
+  async getAddress(
+    salt: number,
+    { ownershipId, destination }: { ownershipId?: string; destination?: string }
+  ) {
+    const address = await this.coordinator.getAddress(
+      salt,
+      this.getOwnershipId(ownershipId),
+      this.getDestionation(destination)
+    );
+    await this.connector?.importAddress(address);
+    return address;
+  }
+
+  async syncWhitelistedAssets(ownershipId?: string): Promise<void> {
+    if (!this.connector)
+      throw new Error(
+        "To use this method provide connector url in ctor options"
+      );
+    const assets = await this.subgraph.getWhitelisedAssets(
+      this.getOwnershipId(ownershipId)
+    );
+
+    for (const t of assets) {
+      await this.connector?.importToken(t.address);
+    }
+  }
+
+  async syncAddresses(ownershipId?: string): Promise<void> {
     if (!this.connector)
       throw new Error(
         "To use this method provide connector url in ctor options"
       );
     const limit = 10;
-    const tokens = await this.coordinator.getTokens(limit, 0);
-    while (tokens.count > tokens.entities.length) {
-      const more = await this.coordinator.getTokens(
-        limit,
-        tokens.entities.length
-      );
-      tokens.entities.push(...more.entities);
-    }
-    for (const t of tokens.entities) {
-      if (t.token === ZERO_ADDRESS) continue;
-      await this.connector.importToken(t.token);
-    }
-  }
-
-  async syncAddresses(): Promise<void> {
-    if (!this.connector)
-      throw new Error(
-        "To use this method provide connector url in ctor options"
-      );
-    const limit = 10;
-    const tokens = await this.coordinator.getForwarders(limit, 0);
+    const tokens = await this.coordinator.getForwarders(
+      this.getOwnershipId(ownershipId),
+      limit,
+      0
+    );
     while (tokens.count > tokens.entities.length) {
       const more = await this.coordinator.getForwarders(
+        this.getOwnershipId(ownershipId),
         limit,
         tokens.entities.length
       );
@@ -88,10 +134,10 @@ export class Curra {
   }
 
   async sync(): Promise<void> {
-    await Promise.all([this.syncAddresses(), this.syncTokens()]);
+    await Promise.all([this.syncAddresses(), this.syncWhitelistedAssets()]);
   }
 
-  private getConnectorOrAbort(): Connector {
+  private getConnectorOrAbort(): CurraConnector {
     if (!this.connector)
       throw new Error("method is avaiable only with connector");
     return this.connector;
@@ -107,3 +153,7 @@ export class Curra {
 }
 
 export * from "./Blockchain";
+export * from "./types";
+export * from "./errors";
+export * from "./CurraConnector";
+export * from "./CurraCoordinator";

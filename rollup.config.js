@@ -7,6 +7,6 @@ export default {
     dir: "dist",
     format: "cjs",
   },
-  external: ["ethers", "needle"],
+  external: ["ethers", "axios", "qs"],
   plugins: [typescript({})],
 };
