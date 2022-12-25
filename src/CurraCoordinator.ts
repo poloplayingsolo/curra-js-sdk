@@ -1,4 +1,4 @@
-import { BigNumberish, Signer, utils } from "ethers";
+import { BigNumberish, Signer } from "ethers";
 import axios, { AxiosRequestConfig, Method } from "axios";
 
 import { CurraCoordinatorError } from "./errors";
@@ -33,8 +33,7 @@ export class CurraCoordinator {
 
   private async getSignature(ownershipId: BigNumberish): Promise<string> {
     const nonce = await this.getNonce(ownershipId);
-    const msg = `0x${Buffer.from(nonce.toString(), "utf8").toString("hex")}`;
-    return this.signer.signMessage(utils.arrayify(msg));
+    return this.signer.signMessage(nonce.toString());
   }
 
   async getNextAddress(ownershipId: BigNumberish, destination: string) {
